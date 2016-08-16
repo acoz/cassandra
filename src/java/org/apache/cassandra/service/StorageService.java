@@ -44,6 +44,7 @@ import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.jmx.JMXConfiguratorMBean;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.Appender;
+import ch.qos.logback.core.hook.DelayingShutdownHook;
 import org.apache.cassandra.auth.AuthKeyspace;
 import org.apache.cassandra.auth.AuthMigrationListener;
 import org.apache.cassandra.concurrent.ScheduledExecutors;
@@ -119,6 +120,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
     private Thread drainOnShutdown = null;
     private volatile boolean inShutdownHook = false;
+    private final List<Runnable> preShutdownHooks = new ArrayList<>();
+    private final List<Runnable> postShutdownHooks = new ArrayList<>();
 
     public static final StorageService instance = new StorageService();
 
@@ -258,6 +261,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
 
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.SNAPSHOT, new SnapshotVerbHandler());
         MessagingService.instance().registerVerbHandlers(MessagingService.Verb.ECHO, new EchoVerbHandler());
+
+        // Cleanup logback
+        DelayingShutdownHook logbackHook = new DelayingShutdownHook();
+        logbackHook.setContext((LoggerContext)LoggerFactory.getILoggerFactory());
+        addPostShutdownHook(logbackHook);
     }
 
     public void registerDaemon(CassandraDaemon daemon)
@@ -556,7 +564,12 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
             @Override
             public void runMayThrow() throws InterruptedException
             {
-                inShutdownHook = true;
+                synchronized (StorageService.this)
+                {
+                    inShutdownHook = true;
+                    runShutdownHooks(preShutdownHooks);
+                }
+
                 ExecutorService counterMutationStage = StageManager.getStage(Stage.COUNTER_MUTATION);
                 ExecutorService mutationStage = StageManager.getStage(Stage.MUTATION);
                 if (mutationStage.isShutdown() && counterMutationStage.isShutdown())
@@ -606,6 +619,11 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
                 ScheduledExecutors.nonPeriodicTasks.shutdown();
                 if (!ScheduledExecutors.nonPeriodicTasks.awaitTermination(1, TimeUnit.MINUTES))
                     logger.warn("Miscellaneous task executor still busy after one minute; proceeding with shutdown");
+
+                synchronized (StorageService.this)
+                {
+                    runShutdownHooks(postShutdownHooks);
+                }
             }
         }, "StorageServiceShutdownHook");
         Runtime.getRuntime().addShutdownHook(drainOnShutdown);
@@ -3926,6 +3944,8 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
     public synchronized void drain() throws IOException, InterruptedException, ExecutionException
     {
         inShutdownHook = true;
+        runShutdownHooks(preShutdownHooks);
+        preShutdownHooks.clear();  // don't run preshutdown hooks twice if we drain then kill the JVM
 
         ExecutorService counterMutationStage = StageManager.getStage(Stage.COUNTER_MUTATION);
         ExecutorService mutationStage = StageManager.getStage(Stage.MUTATION);
@@ -4000,6 +4020,78 @@ public class StorageService extends NotificationBroadcasterSupport implements IE
         ColumnFamilyStore.shutdownPostFlushExecutor();
 
         setMode(Mode.DRAINED, true);
+
+        // Not present: post shutdown hooks, which are only called inside the actual C* shutdown hook.  It doesn't
+        // make sense to kill (for example) logback before the JVM is completely halted.
+    }
+
+    public void runShutdownHooks(List<Runnable> hooks)
+    {
+        for (Runnable hook : hooks)
+        {
+            try
+            {
+                hook.run();
+            }
+            catch (Exception e)
+            {
+                logger.warn("Attempting to continue after shutdown hook exception", e);
+            }
+        }
+    }
+
+    /**
+     * Add a runnable which will be called before C* shuts down its services.  This is useful for other
+     * applications running in the same JVM which may want to shut down first rather than time out attempting to use
+     * C* calls which will no longer work.
+     * @param hook: the code to run
+     * @return true on success, false if C* is already shutting down, in which case the runnable has NOT been called
+     * and it is the caller's responsibility to decide what to do.
+     */
+    public synchronized boolean addPreShutdownHook(Runnable hook)
+    {
+        if (!inShutdownHook)
+        {
+            preShutdownHooks.add(hook);
+        }
+
+        return !inShutdownHook;
+    }
+
+    /**
+     * Remove a preshutdown hook
+     */
+    public synchronized boolean removePreShutdownHook(Runnable hook)
+    {
+        return preShutdownHooks.remove(hook);
+    }
+
+    /**
+     * Add a runnable which will be called after C* completely shuts down  This is useful for other applications
+     * running in the same JVM that C* needs to work (e.g. the logger code) and should shut down later.  NOTE THAT
+     * PRE AND POST SHUTDOWN HOOKS ARE NOT MIRRORS.  Specifically, the preshutdown hooks are called before drain() as
+     * well, as C*'s services are going down, but the post shutdown hooks are only called inside the actual JVM shutdown
+     * hook, when we know everything is completely finished.
+     * @param hook: the code to run
+     * @return true on success, false if C* is already shutting down, in which case the runnable has NOT been called
+     * and it is the caller's responsibility to decide what to do.
+     */
+    public synchronized boolean addPostShutdownHook(Runnable hook)
+    {
+        if (!inShutdownHook)
+        {
+            postShutdownHooks.add(hook);
+        }
+
+        return !inShutdownHook;
+    }
+
+    /**
+     * Remove a postshutdownhook
+     */
+    public synchronized boolean removePostShutdownHook(Runnable hook)
+    {
+        return postShutdownHooks.remove(hook);
     }
 
     // Never ever do this at home. Used by tests.
