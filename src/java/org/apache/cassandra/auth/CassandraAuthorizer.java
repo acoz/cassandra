@@ -19,6 +19,7 @@ package org.apache.cassandra.auth;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
@@ -70,18 +71,21 @@ public class CassandraAuthorizer implements IAuthorizer
     private SelectStatement authorizeRoleStatement;
     private SelectStatement legacyAuthorizeRoleStatement;
 
+    private final PermissionFactory factory = new PermissionFactory();
+
     public CassandraAuthorizer()
     {
     }
 
     // Returns every permission on the resource granted to the user either directly
     // or indirectly via roles granted to the user.
-    public Set<Permission> authorize(AuthenticatedUser user, IResource resource)
+    public Set<IPermission> authorize(AuthenticatedUser user, IResource resource)
     {
         if (user.isSuper())
             return resource.applicablePermissions();
 
-        Set<Permission> permissions = EnumSet.noneOf(Permission.class);
+        Set<IPermission> permissions = new HashSet<>();
+
         try
         {
             for (RoleResource role: user.getRoles())
@@ -100,14 +104,14 @@ public class CassandraAuthorizer implements IAuthorizer
         return permissions;
     }
 
-    public void grant(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource grantee)
+    public void grant(AuthenticatedUser performer, Set<IPermission> permissions, IResource resource, RoleResource grantee)
     throws RequestValidationException, RequestExecutionException
     {
         modifyRolePermissions(permissions, resource, grantee, "+");
         addLookupEntry(resource, grantee);
     }
 
-    public void revoke(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource revokee)
+    public void revoke(AuthenticatedUser performer, Set<IPermission> permissions, IResource resource, RoleResource revokee)
     throws RequestValidationException, RequestExecutionException
     {
         modifyRolePermissions(permissions, resource, revokee, "-");
@@ -208,7 +212,7 @@ public class CassandraAuthorizer implements IAuthorizer
     }
 
     // Add every permission on the resource granted to the role
-    private void addPermissionsForRole(Set<Permission> permissions, IResource resource, RoleResource role)
+    private void addPermissionsForRole(Set<IPermission> permissions, IResource resource, RoleResource role)
     throws RequestExecutionException, RequestValidationException
     {
         QueryOptions options = QueryOptions.forInternalCalls(ConsistencyLevel.LOCAL_ONE,
@@ -227,20 +231,20 @@ public class CassandraAuthorizer implements IAuthorizer
         {
             for (String perm : result.one().getSet(PERMISSIONS, UTF8Type.instance))
             {
-                permissions.add(Permission.valueOf(perm));
+                permissions.add(factory.valueOf(perm));
             }
         }
     }
 
     // Adds or removes permissions from a role_permissions table (adds if op is "+", removes if op is "-")
-    private void modifyRolePermissions(Set<Permission> permissions, IResource resource, RoleResource role, String op)
+    private void modifyRolePermissions(Set<IPermission> permissions, IResource resource, RoleResource role, String op)
             throws RequestExecutionException
     {
         process(String.format("UPDATE %s.%s SET permissions = permissions %s {%s} WHERE role = '%s' AND resource = '%s'",
                               SchemaConstants.AUTH_KEYSPACE_NAME,
                               AuthKeyspace.ROLE_PERMISSIONS,
                               op,
-                              "'" + StringUtils.join(permissions, "','") + "'",
+                              "'" + permissions.stream().map(perm -> perm.getName()).collect(Collectors.joining("','")) + "'",
                               escape(role.getRoleName()),
                               escape(resource.getName())));
     }
@@ -270,7 +274,7 @@ public class CassandraAuthorizer implements IAuthorizer
     // throw UnauthorizedException. So only a superuser can view everybody's permissions. Regular users are only
     // allowed to see their own permissions.
     public Set<PermissionDetails> list(AuthenticatedUser performer,
-                                       Set<Permission> permissions,
+                                       Set<IPermission> permissions,
                                        IResource resource,
                                        RoleResource grantee)
     throws RequestValidationException, RequestExecutionException
@@ -290,7 +294,7 @@ public class CassandraAuthorizer implements IAuthorizer
         return details;
     }
 
-    private Set<PermissionDetails> listPermissionsForRole(Set<Permission> permissions,
+    private Set<PermissionDetails> listPermissionsForRole(Set<IPermission> permissions,
                                                           IResource resource,
                                                           RoleResource role)
     throws RequestExecutionException
@@ -306,7 +310,7 @@ public class CassandraAuthorizer implements IAuthorizer
             {
                 for (String p : row.getSet(PERMISSIONS, UTF8Type.instance))
                 {
-                    Permission permission = Permission.valueOf(p);
+                    IPermission permission = factory.valueOf(p);
                     if (permissions.contains(permission))
                         details.add(new PermissionDetails(row.getString(entityColumnName),
                                                           Resources.fromName(row.getString(RESOURCE)),
@@ -420,7 +424,7 @@ public class CassandraAuthorizer implements IAuthorizer
                     {
                         public boolean apply(String s)
                         {
-                            return resource.applicablePermissions().contains(Permission.valueOf(s));
+                            return resource.applicablePermissions().contains(factory.valueOf(s));
                         }
                     };
                     SetSerializer<String> serializer = SetSerializer.getInstance(UTF8Serializer.instance, UTF8Type.instance);

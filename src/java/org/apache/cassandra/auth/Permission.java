@@ -15,13 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.cassandra.auth;
 
-import java.util.EnumSet;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 
 /**
  * An enum encapsulating the set of possible permissions that an authenticated user can have on a resource.
@@ -29,7 +28,7 @@ import com.google.common.collect.Sets;
  * IAuthorizer implementations may encode permissions using ordinals, so the Enum order must never change order.
  * Adding new values is ok.
  */
-public enum Permission
+public enum Permission implements IPermission
 {
     @Deprecated
     READ,
@@ -63,7 +62,11 @@ public enum Permission
     // UDF permissions
     EXECUTE;  // required to invoke any user defined function or aggregate
 
-    public static final Set<Permission> ALL =
-            Sets.immutableEnumSet(EnumSet.range(Permission.CREATE, Permission.EXECUTE));
-    public static final Set<Permission> NONE = ImmutableSet.of();
+    public static final Set<IPermission> ALL = ImmutableSet.<IPermission>of(CREATE, ALTER, DROP, SELECT, MODIFY, AUTHORIZE, DESCRIBE, EXECUTE);
+    public static final Set<IPermission> NONE = ImmutableSet.of();
+
+    public String getName()
+    {
+        return name();
+    }
 }

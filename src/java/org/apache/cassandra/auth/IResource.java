@@ -64,5 +64,5 @@ public interface IResource
      *
      * @return the permissions that may be granted on the specific resource
      */
-    Set<Permission> applicablePermissions();
+    Set<IPermission> applicablePermissions();
 }

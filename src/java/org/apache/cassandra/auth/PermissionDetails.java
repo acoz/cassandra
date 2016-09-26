@@ -28,9 +28,9 @@ public class PermissionDetails implements Comparable<PermissionDetails>
 {
     public final String grantee;
     public final IResource resource;
-    public final Permission permission;
+    public final IPermission permission;
 
-    public PermissionDetails(String grantee, IResource resource, Permission permission)
+    public PermissionDetails(String grantee, IResource resource, IPermission permission)
     {
         this.grantee = grantee;
         this.resource = resource;
@@ -43,7 +43,7 @@ public class PermissionDetails implements Comparable<PermissionDetails>
         return ComparisonChain.start()
                               .compare(grantee, other.grantee)
                               .compare(resource.getName(), other.resource.getName())
-                              .compare(permission, other.permission)
+                              .compare(permission.getName(), other.permission.getName())
                               .result();
     }
 

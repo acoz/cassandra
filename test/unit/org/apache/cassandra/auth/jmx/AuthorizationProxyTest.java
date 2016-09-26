@@ -459,7 +459,7 @@ public class AuthorizationProxyTest
                                    .collect(Collectors.toSet());
     }
 
-    private static PermissionDetails permission(RoleResource grantee, IResource resource, Permission permission)
+    private static PermissionDetails permission(RoleResource grantee, IResource resource, IPermission permission)
     {
         return new PermissionDetails(grantee.getRoleName(), resource, permission);
     }

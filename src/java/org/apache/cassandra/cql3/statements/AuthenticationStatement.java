@@ -17,7 +17,7 @@
  */
 package org.apache.cassandra.cql3.statements;
 
-import org.apache.cassandra.auth.Permission;
+import org.apache.cassandra.auth.IPermission;
 import org.apache.cassandra.auth.RoleResource;
 import org.apache.cassandra.cql3.CQLStatement;
 import org.apache.cassandra.cql3.QueryOptions;
@@ -55,7 +55,7 @@ public abstract class AuthenticationStatement extends ParsedStatement implements
         throw new UnsupportedOperationException();
     }
 
-    public void checkPermission(ClientState state, Permission required, RoleResource resource) throws UnauthorizedException
+    public void checkPermission(ClientState state, IPermission required, RoleResource resource) throws UnauthorizedException
     {
         try
         {

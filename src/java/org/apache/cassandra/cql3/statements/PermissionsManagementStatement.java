@@ -30,11 +30,11 @@ import org.apache.cassandra.service.ClientState;
 
 public abstract class PermissionsManagementStatement extends AuthorizationStatement
 {
-    protected final Set<Permission> permissions;
+    protected final Set<IPermission> permissions;
     protected IResource resource;
     protected final RoleResource grantee;
 
-    protected PermissionsManagementStatement(Set<Permission> permissions, IResource resource, RoleName grantee)
+    protected PermissionsManagementStatement(Set<IPermission> permissions, IResource resource, RoleName grantee)
     {
         this.permissions = permissions;
         this.resource = resource;
@@ -68,7 +68,7 @@ public abstract class PermissionsManagementStatement extends AuthorizationStatem
         // check that the user has AUTHORIZE permission on the resource or its parents, otherwise reject GRANT/REVOKE.
         state.ensureHasPermission(Permission.AUTHORIZE, resource);
         // check that the user has [a single permission or all in case of ALL] on the resource or its parents.
-        for (Permission p : permissions)
+        for (IPermission p : permissions)
             state.ensureHasPermission(p, resource);
     }
 }

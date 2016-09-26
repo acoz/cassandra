@@ -270,7 +270,7 @@ public class AuthorizationProxy implements InvocationHandler
         ObjectName targetBean = (ObjectName)args[0];
 
         // work out which permission we need to execute the method being called on the mbean
-        Permission requiredPermission = getRequiredPermission(methodName);
+        IPermission requiredPermission = getRequiredPermission(methodName);
         if (null == requiredPermission)
             return false;
 
@@ -299,7 +299,7 @@ public class AuthorizationProxy implements InvocationHandler
      * @param required
      * @return the set of JMXResources upon which the subject has been granted the required permission
      */
-    private Set<JMXResource> getPermittedResources(RoleResource subject, Permission required)
+    private Set<JMXResource> getPermittedResources(RoleResource subject, IPermission required)
     {
         return getPermissions.apply(subject)
                .stream()
@@ -315,7 +315,7 @@ public class AuthorizationProxy implements InvocationHandler
      * @param resource
      * @return true if the Subject has been granted the required permission on the specified resource; false otherwise
      */
-    private boolean hasPermission(RoleResource subject, Permission permission, JMXResource resource)
+    private boolean hasPermission(RoleResource subject, IPermission permission, JMXResource resource)
     {
         return getPermissions.apply(subject)
                .stream()
@@ -408,7 +408,7 @@ public class AuthorizationProxy implements InvocationHandler
      * @param methodName
      * @return
      */
-    private static Permission getRequiredPermission(String methodName)
+    private static IPermission getRequiredPermission(String methodName)
     {
         switch (methodName)
         {

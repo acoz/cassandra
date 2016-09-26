@@ -143,11 +143,11 @@ options {
         operations.add(Pair.create(key, update));
     }
 
-    public Set<Permission> filterPermissions(Set<Permission> permissions, IResource resource)
+    public Set<IPermission> filterPermissions(Set<IPermission> permissions, IResource resource)
     {
         if (resource == null)
             return Collections.emptySet();
-        Set<Permission> filtered = new HashSet<>(permissions);
+        Set<IPermission> filtered = new HashSet<>(permissions);
         filtered.retainAll(resource.applicablePermissions());
         if (filtered.isEmpty())
             addRecognitionError("Resource type " + resource.getClass().getSimpleName() +
@@ -953,14 +953,14 @@ listPermissionsStatement returns [ListPermissionsStatement stmt]
       { $stmt = new ListPermissionsStatement($permissionOrAll.perms, resource, grantee, recursive); }
     ;
 
-permission returns [Permission perm]
+permission returns [IPermission perm]
     : p=(K_CREATE | K_ALTER | K_DROP | K_SELECT | K_MODIFY | K_AUTHORIZE | K_DESCRIBE | K_EXECUTE)
     { $perm = Permission.valueOf($p.text.toUpperCase()); }
     ;
 
-permissionOrAll returns [Set<Permission> perms]
+permissionOrAll returns [Set<IPermission> perms]
     : K_ALL ( K_PERMISSIONS )?       { $perms = Permission.ALL; }
-    | p=permission ( K_PERMISSION )? { $perms = EnumSet.of($p.perm); }
+    | p=permission ( K_PERMISSION )? { $perms = ImmutableSet.of($p.perm); }
     ;
 
 resource returns [IResource res]

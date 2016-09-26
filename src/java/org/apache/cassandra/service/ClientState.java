@@ -274,7 +274,7 @@ public class ClientState
             throw new AuthenticationException(String.format("%s is not permitted to log in", user.getName()));
     }
 
-    public void hasAllKeyspacesAccess(Permission perm) throws UnauthorizedException
+    public void hasAllKeyspacesAccess(IPermission perm) throws UnauthorizedException
     {
         if (isInternal)
             return;
@@ -282,25 +282,25 @@ public class ClientState
         ensureHasPermission(perm, DataResource.root());
     }
 
-    public void hasKeyspaceAccess(String keyspace, Permission perm) throws UnauthorizedException, InvalidRequestException
+    public void hasKeyspaceAccess(String keyspace, IPermission perm) throws UnauthorizedException, InvalidRequestException
     {
         hasAccess(keyspace, perm, DataResource.keyspace(keyspace));
     }
 
-    public void hasColumnFamilyAccess(String keyspace, String columnFamily, Permission perm)
+    public void hasColumnFamilyAccess(String keyspace, String columnFamily, IPermission perm)
     throws UnauthorizedException, InvalidRequestException
     {
         ThriftValidation.validateColumnFamily(keyspace, columnFamily);
         hasAccess(keyspace, perm, DataResource.table(keyspace, columnFamily));
     }
 
-    public void hasColumnFamilyAccess(CFMetaData cfm, Permission perm)
+    public void hasColumnFamilyAccess(CFMetaData cfm, IPermission perm)
     throws UnauthorizedException, InvalidRequestException
     {
         hasAccess(cfm.ksName, perm, cfm.resource);
     }
 
-    private void hasAccess(String keyspace, Permission perm, DataResource resource)
+    private void hasAccess(String keyspace, IPermission perm, DataResource resource)
     throws UnauthorizedException, InvalidRequestException
     {
         validateKeyspace(keyspace);
@@ -316,7 +316,7 @@ public class ClientState
         ensureHasPermission(perm, resource);
     }
 
-    public void ensureHasPermission(Permission perm, IResource resource) throws UnauthorizedException
+    public void ensureHasPermission(IPermission perm, IResource resource) throws UnauthorizedException
     {
         if (!DatabaseDescriptor.getAuthorizer().requireAuthorization())
             return;
@@ -331,7 +331,7 @@ public class ClientState
 
     // Convenience method called from checkAccess method of CQLStatement
     // Also avoids needlessly creating lots of FunctionResource objects
-    public void ensureHasPermission(Permission permission, Function function)
+    public void ensureHasPermission(IPermission permission, Function function)
     {
         // Save creating a FunctionResource is we don't need to
         if (!DatabaseDescriptor.getAuthorizer().requireAuthorization())
@@ -346,7 +346,7 @@ public class ClientState
                                                                              function.argTypes()));
     }
 
-    private void checkPermissionOnResourceChain(Permission perm, IResource resource)
+    private void checkPermissionOnResourceChain(IPermission perm, IResource resource)
     {
         for (IResource r : Resources.chain(resource))
             if (authorize(r).contains(perm))
@@ -358,7 +358,7 @@ public class ClientState
                                                       resource));
     }
 
-    private void preventSystemKSSchemaModification(String keyspace, DataResource resource, Permission perm) throws UnauthorizedException
+    private void preventSystemKSSchemaModification(String keyspace, DataResource resource, IPermission perm) throws UnauthorizedException
     {
         // we only care about schema modification.
         if (!((perm == Permission.ALTER) || (perm == Permission.DROP) || (perm == Permission.CREATE)))
@@ -414,7 +414,7 @@ public class ClientState
         return new CassandraVersion[]{ QueryProcessor.CQL_VERSION };
     }
 
-    private Set<Permission> authorize(IResource resource)
+    private Set<IPermission> authorize(IResource resource)
     {
         return user.getPermissions(resource);
     }

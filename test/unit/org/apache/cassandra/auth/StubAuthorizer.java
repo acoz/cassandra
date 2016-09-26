@@ -28,27 +28,27 @@ import org.apache.cassandra.utils.Pair;
 
 public class StubAuthorizer implements IAuthorizer
 {
-    Map<Pair<String, IResource>, Set<Permission>> userPermissions = new HashMap<>();
+    Map<Pair<String, IResource>, Set<IPermission>> userPermissions = new HashMap<>();
 
     public void clear()
     {
         userPermissions.clear();
     }
 
-    public Set<Permission> authorize(AuthenticatedUser user, IResource resource)
+    public Set<IPermission> authorize(AuthenticatedUser user, IResource resource)
     {
         Pair<String, IResource> key = Pair.create(user.getName(), resource);
-        Set<Permission> perms = userPermissions.get(key);
+        Set<IPermission> perms = userPermissions.get(key);
         return perms != null ? perms : Collections.emptySet();
     }
 
     public void grant(AuthenticatedUser performer,
-                      Set<Permission> permissions,
+                      Set<IPermission> permissions,
                       IResource resource,
                       RoleResource grantee) throws RequestValidationException, RequestExecutionException
     {
         Pair<String, IResource> key = Pair.create(grantee.getRoleName(), resource);
-        Set<Permission> perms = userPermissions.get(key);
+        Set<IPermission> perms = userPermissions.get(key);
         if (null == perms)
         {
             perms = new HashSet<>();
@@ -58,12 +58,12 @@ public class StubAuthorizer implements IAuthorizer
     }
 
     public void revoke(AuthenticatedUser performer,
-                       Set<Permission> permissions,
+                       Set<IPermission> permissions,
                        IResource resource,
                        RoleResource revokee) throws RequestValidationException, RequestExecutionException
     {
         Pair<String, IResource> key = Pair.create(revokee.getRoleName(), resource);
-        Set<Permission> perms = userPermissions.get(key);
+        Set<IPermission> perms = userPermissions.get(key);
         if (null != perms)
         {
             perms.removeAll(permissions);
@@ -73,7 +73,7 @@ public class StubAuthorizer implements IAuthorizer
     }
 
     public Set<PermissionDetails> list(AuthenticatedUser performer,
-                                       Set<Permission> permissions,
+                                       Set<IPermission> permissions,
                                        IResource resource,
                                        RoleResource grantee) throws RequestValidationException, RequestExecutionException
     {

@@ -49,7 +49,7 @@ public interface IAuthorizer
      * @param resource Resource for which the authorization is being requested. @see DataResource.
      * @return Set of permissions of the user on the resource. Should never return null. Use Permission.NONE instead.
      */
-    Set<Permission> authorize(AuthenticatedUser user, IResource resource);
+    Set<IPermission> authorize(AuthenticatedUser user, IResource resource);
 
     /**
      * Grants a set of permissions on a resource to a role.
@@ -66,7 +66,7 @@ public interface IAuthorizer
      * @throws RequestExecutionException
      * @throws java.lang.UnsupportedOperationException
      */
-    void grant(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource grantee)
+    void grant(AuthenticatedUser performer, Set<IPermission> permissions, IResource resource, RoleResource grantee)
     throws RequestValidationException, RequestExecutionException;
 
     /**
@@ -84,7 +84,7 @@ public interface IAuthorizer
      * @throws RequestExecutionException
      * @throws java.lang.UnsupportedOperationException
      */
-    void revoke(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource revokee)
+    void revoke(AuthenticatedUser performer, Set<IPermission> permissions, IResource resource, RoleResource revokee)
     throws RequestValidationException, RequestExecutionException;
 
     /**
@@ -93,7 +93,7 @@ public interface IAuthorizer
      * not support it should be sure to throw UnsupportedOperationException.
      *
      * @param performer User who wants to see the permissions.
-     * @param permissions Set of Permission values the user is interested in. The result should only include the
+     * @param permissions Set of IPermission values the user is interested in. The result should only include the
      *                    matching ones.
      * @param resource The resource on which permissions are requested. Can be null, in which case permissions on all
      *                 resources should be returned.
@@ -106,7 +106,7 @@ public interface IAuthorizer
      * @throws RequestExecutionException
      * @throws java.lang.UnsupportedOperationException
      */
-    Set<PermissionDetails> list(AuthenticatedUser performer, Set<Permission> permissions, IResource resource, RoleResource grantee)
+    Set<PermissionDetails> list(AuthenticatedUser performer, Set<IPermission> permissions, IResource resource, RoleResource grantee)
     throws RequestValidationException, RequestExecutionException;
 
     /**

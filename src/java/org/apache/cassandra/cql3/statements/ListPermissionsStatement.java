@@ -47,12 +47,12 @@ public class ListPermissionsStatement extends AuthorizationStatement
         metadata = Collections.unmodifiableList(columns);
     }
 
-    protected final Set<Permission> permissions;
+    protected final Set<IPermission> permissions;
     protected IResource resource;
     protected final boolean recursive;
     private final RoleResource grantee;
 
-    public ListPermissionsStatement(Set<Permission> permissions, IResource resource, RoleName grantee, boolean recursive)
+    public ListPermissionsStatement(Set<IPermission> permissions, IResource resource, RoleName grantee, boolean recursive)
     {
         this.permissions = permissions;
         this.resource = resource;

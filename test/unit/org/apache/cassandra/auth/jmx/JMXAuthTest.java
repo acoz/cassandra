@@ -189,7 +189,7 @@ public class JMXAuthTest extends CQLTester
         assertPermissionOnResource(Permission.EXECUTE, JMXResource.root(), proxy::estimateKeys);
     }
 
-    private void assertPermissionOnResource(Permission permission,
+    private void assertPermissionOnResource(IPermission permission,
                                             JMXResource resource,
                                             MBeanAction action)
     {
@@ -198,7 +198,7 @@ public class JMXAuthTest extends CQLTester
         assertAuthorized(action);
     }
 
-    private void grantPermission(Permission permission, JMXResource resource, RoleResource role)
+    private void grantPermission(IPermission permission, JMXResource resource, RoleResource role)
     {
         DatabaseDescriptor.getAuthorizer().grant(AuthenticatedUser.SYSTEM_USER,
                                                  ImmutableSet.of(permission),
